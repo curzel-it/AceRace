@@ -5,8 +5,6 @@ the deck decide.
 
 Play it live: [**curzel.it/acerace**](https://curzel.it/acerace)
 
-![Ace Race — portrait](https://curzel.it/acerace/) <!-- screenshot once deployed -->
-
 ---
 
 ## The game (with real cards)
@@ -14,15 +12,16 @@ Play it live: [**curzel.it/acerace**](https://curzel.it/acerace)
 Requires a 56-card deck — standard 52 plus 4 jokers. Up to 4 players. Aces
 are removed from the deck and set aside.
 
-Each player picks a suit. The track is a 5×11 grid:
+Each player picks a suit. The track is a 5-column grid. The default is 9
+rows total — 1 starting row, 7 checkpoint rows, 1 finish row — but the
+length is configurable (see [Customising the track](#customising-the-track)).
 
 - The 4 aces sit face-up on the bottom row, one per column.
-- 9 cards from the deck are placed face-down in the rightmost column,
-  starting on the second row from the bottom.
-- The remaining 43 cards form the dealer's deck, face-down.
+- One card per row in between is placed face-down in the rightmost column.
+- The rest of the deck is the dealer's draw pile.
 
 ```
-empty | empty | empty | empty |  empty   |
+empty | empty | empty | empty |  empty   |   ← finish
 empty | empty | empty | empty | face down|
 empty | empty | empty | empty | face down|
 empty | empty | empty | empty | face down|
@@ -30,9 +29,7 @@ empty | empty | empty | empty | face down|
 empty | empty | empty | empty | face down|
 empty | empty | empty | empty | face down|
 empty | empty | empty | empty | face down|
-empty | empty | empty | empty | face down|
-empty | empty | empty | empty | face down|
-  A♥  |  A♠   |  A♦   |  A♣  |  empty   |
+  A♥  |  A♠   |  A♦   |  A♣  |  empty   |   ← start
 ```
 
 ### Loop
@@ -55,25 +52,41 @@ joker rule keeps a runaway leader from running away.
 ## This implementation
 
 A single-page, dead-simple HTML + CSS + vanilla JS app. No canvas, no
-framework, no build step.
+framework, no build step. Card faces are generated as inline SVG so the
+rank and suit stay crisp and legible at any size — particularly on small
+mobile cards.
 
 - **Portrait** — aces race bottom → top; face-down checkpoints down the
   right side.
 - **Landscape** — track rotates 90°: aces race left → right; checkpoints
   along the bottom. Rotation is handled live; resizing the window swaps
   layouts without dropping game state.
-- **Animations** — cards glide between rows, checkpoint reveals flip in
-  mid-chain, the winning ace pulses. `prefers-reduced-motion` is honored.
+- **Effects** — cards glide between rows, the moving ace gets a
+  suit-coloured halo, checkpoints flip with a gold sparkle, joker draws
+  flash the whole screen, the leaders shake while the trailers catch up,
+  and the winner gets confetti. `prefers-reduced-motion` is honoured.
 - **Controls** — `Space` / `Enter` draws the next card, `R` starts a new
   game. The on-screen "Draw" and "New game" buttons do the same.
 
+### Customising the track
+
+Add `?rows=N` to the URL to change the track length. `N` includes the
+start and finish rows, so the number of checkpoints (and the number of
+intermediate steps an ace has to take to win) is `N − 2`.
+
+- `?rows=5` — quick game, 3 checkpoints, ~3 moves to win.
+- `?rows=9` — default, 7 checkpoints.
+- `?rows=14` — long game, 12 checkpoints, draw pile down to 40 cards.
+
+Valid range: 4–14.
+
 ### Files
 
-| File         | What it is                                  |
-| ------------ | ------------------------------------------- |
-| `index.html` | Markup for header, board, controls, footer. |
-| `styles.css` | Felt + gold theme, orientation media query. |
-| `script.js`  | Deck shuffle, game loop, chain-reveal logic, JS-driven card positioning. |
+| File         | What it is                                          |
+| ------------ | --------------------------------------------------- |
+| `index.html` | Markup for header, board, controls, effects layer.  |
+| `styles.css` | Felt + gold theme, animations, effects.             |
+| `script.js`  | Deck, game loop, chain-reveal, SVG cards, layout.   |
 
 ### Run locally
 
@@ -86,20 +99,5 @@ Any static file server works — there is no build step.
 
 ### Deploy
 
-GitHub Pages is configured to serve `main` from the repo root. Pushing to
-`main` publishes to <https://curzel.it/acerace>.
-
----
-
-## Cards
-
-Card faces are PNGs from the **Retro Deck** — a hand-drawn, pixel-art
-56-card poker deck (52 + 4 jokers), 153 × 214 pixels each. They live in
-`cards/` and render with `image-rendering: pixelated`; JS snaps the
-displayed size to an integer multiple of the source when there's room.
-
-> **[Retro Deck — pixel-art poker cards on Etsy](https://curzel.it/retro_deck/)**
-
-Filename convention: `<suit>_<rank>.png` with `1` = ace, numbers `2–10`,
-and `jack`/`queen`/`king` for face cards. Jokers are `joker_1.png`
-through `joker_4.png`. `back.png` is the card back.
+GitHub Pages serves `main` from the repo root, publishing to
+<https://curzel.it/acerace>.

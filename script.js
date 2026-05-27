@@ -1,33 +1,38 @@
 'use strict';
 
-const SUITS = ['hearts', 'spades', 'diamonds', 'clubs'];
-const SUIT_NAMES = { hearts: 'Hearts', spades: 'Spades', diamonds: 'Diamonds', clubs: 'Clubs' };
-const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const RANK_FILES = {
-  'A': '1',
-  '2': '2', '3': '3', '4': '4', '5': '5', '6': '6',
-  '7': '7', '8': '8', '9': '9', '10': '10',
-  'J': 'jack', 'Q': 'queen', 'K': 'king',
-};
-const RANK_NAMES = {
+const SUITS       = ['hearts', 'spades', 'diamonds', 'clubs'];
+const SUIT_NAMES  = { hearts: 'Hearts', spades: 'Spades', diamonds: 'Diamonds', clubs: 'Clubs' };
+const SUIT_GLYPHS = { hearts: '♥',      spades: '♠',      diamonds: '♦',         clubs: '♣' };
+const RED_SUITS   = new Set(['hearts', 'diamonds']);
+const RANKS       = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const RANK_NAMES  = {
   'A': 'Ace', '2': 'Two', '3': 'Three', '4': 'Four', '5': 'Five',
   '6': 'Six', '7': 'Seven', '8': 'Eight', '9': 'Nine', '10': 'Ten',
   'J': 'Jack', 'Q': 'Queen', 'K': 'King',
 };
 
-// Card rendering: 'svg' renders clean stylized faces with a big rank and
-// suit — readable down to ~30px wide. 'pixel' uses the Retro Deck PNGs in
-// cards/ (better on large screens, less legible on tiny mobile cards).
-const CARD_STYLE = 'svg';  // 'svg' | 'pixel'
+function isRedSuit(suit) { return RED_SUITS.has(suit); }
 
-const SUIT_GLYPHS = { hearts: '♥', spades: '♠', diamonds: '♦', clubs: '♣' };
+// Grid: 5 columns (4 racing lanes + 1 checkpoint column) × NUM_ROWS rows.
+// NUM_ROWS counts the start row and the finish row, so the default of 9
+// means: 1 start, 7 racing/checkpoint rows, 1 finish. Override via ?rows=N.
+const NUM_COLS         = 5;
+const CHECKPOINT_COL   = 5;
+const NUM_ROWS         = getNumRowsFromQuery();
+const FINISH_PROGRESS  = NUM_ROWS - 1;
+const CHECKPOINT_COUNT = NUM_ROWS - 2;
 
-const SRC_W = 153, SRC_H = 214;      // pixel-art source dimensions (also the SVG viewBox)
+function getNumRowsFromQuery() {
+  try {
+    const v = parseInt(new URLSearchParams(window.location.search).get('rows'), 10);
+    if (Number.isFinite(v) && v >= 4 && v <= 14) return v;
+  } catch (_) {}
+  return 9;
+}
+
+const SRC_W = 153, SRC_H = 214;      // card aspect + SVG viewBox
 const BOARD_PAD = 8;
-const CARD_GAP_FRACTION = 0.09;      // gap between cards, as a fraction of card width
-const FINISH_PROGRESS = 10;
-const CHECKPOINT_COUNT = 9;
-const CHECKPOINT_COL = 5;
+const CARD_GAP_FRACTION = 0.09;
 
 const MOVE_MS = 480;
 const FLIP_MS = 550;
@@ -37,9 +42,6 @@ const JOKER_HOLD_MS = 700;
 let state = null;
 let board, statusEl, drawBtn, newGameBtn, lastCardEl, deckCountEl, effectsEl;
 let cardW = 0, cardH = 0, cardGap = 0;
-
-const RED_SUITS = new Set(['hearts', 'diamonds']);
-function isRedSuit(suit) { return RED_SUITS.has(suit); }
 
 // ---------- Deck setup ----------
 
@@ -91,8 +93,8 @@ function isLandscape() {
 /** Pick a card scale. Integer multiples (1x, 2x, 3x) when there's room to
  *  upscale; continuous downscale on tight screens. */
 function chooseScale(availW, availH) {
-  const cols = isLandscape() ? 11 : 5;
-  const rows = isLandscape() ? 5 : 11;
+  const cols = isLandscape() ? NUM_ROWS : NUM_COLS;
+  const rows = isLandscape() ? NUM_COLS : NUM_ROWS;
   // Each grid step is cardW + gap (or cardH + gap). gap = cardW * fraction.
   const stepWFactor = SRC_W * (1 + CARD_GAP_FRACTION);
   const stepHFactor = SRC_H + SRC_W * CARD_GAP_FRACTION;  // gap is measured in card-width units
@@ -103,24 +105,28 @@ function chooseScale(availW, availH) {
   return Math.max(0.18, s);
 }
 
+function heightOf(sel) {
+  const el = typeof sel === 'string' ? document.querySelector(sel) : sel;
+  return el ? el.offsetHeight : 0;
+}
+
 function layout() {
-  const header   = document.querySelector('header').offsetHeight;
-  const footer   = document.querySelector('footer').offsetHeight;
-  const status_  = statusEl.offsetHeight;
-  const controls = document.getElementById('controls').offsetHeight;
-  const lastCard = lastCardEl.offsetHeight;
+  const header   = heightOf('header');
+  const status_  = heightOf(statusEl);
+  const controls = heightOf('#controls');
+  const lastCard = heightOf(lastCardEl);
   const slack    = isLandscape() ? 30 : 36;
 
   const availW = window.innerWidth  * (isLandscape() ? 0.97 : 0.96);
-  const availH = window.innerHeight - header - footer - status_ - controls - lastCard - slack;
+  const availH = window.innerHeight - header - status_ - controls - lastCard - slack;
 
   const scale = chooseScale(availW, availH);
   cardW   = SRC_W * scale;
   cardH   = SRC_H * scale;
   cardGap = Math.max(2, SRC_W * scale * CARD_GAP_FRACTION);
 
-  const cols = isLandscape() ? 11 : 5;
-  const rows = isLandscape() ? 5  : 11;
+  const cols = isLandscape() ? NUM_ROWS : NUM_COLS;
+  const rows = isLandscape() ? NUM_COLS : NUM_ROWS;
   const boardW = cols * cardW + (cols - 1) * cardGap + 2 * BOARD_PAD;
   const boardH = rows * cardH + (rows - 1) * cardGap + 2 * BOARD_PAD;
   board.style.width  = boardW + 'px';
@@ -141,8 +147,8 @@ function geomFor(col, row) {
   const stepH = cardH + cardGap;
   if (isLandscape()) {
     return {
-      left: BOARD_PAD + (11 - row) * stepW,
-      top:  BOARD_PAD + (col - 1)  * stepH,
+      left: BOARD_PAD + (NUM_ROWS - row) * stepW,
+      top:  BOARD_PAD + (col - 1)        * stepH,
     };
   }
   return {
@@ -172,27 +178,12 @@ function reflowAll() {
 
 // ---------- Card elements ----------
 
-function cardImageUrl(card) {
-  if (card.joker) return `cards/joker_${card.id}.png`;
-  return `cards/${card.suit}_${RANK_FILES[card.rank]}.png`;
-}
-
 function describeCard(card) {
   if (card.joker) return 'a Joker';
   return `${RANK_NAMES[card.rank]} of ${SUIT_NAMES[card.suit]}`;
 }
 
-// ---------- Card markup (pixel or SVG) ----------
-
-function cardFaceMarkup(card) {
-  if (CARD_STYLE === 'svg') return svgFace(card);
-  return `<img src="${cardImageUrl(card)}" alt="" draggable="false">`;
-}
-
-function cardBackMarkup() {
-  if (CARD_STYLE === 'svg') return svgBack();
-  return `<img src="cards/back.png" alt="" draggable="false">`;
-}
+// ---------- SVG card markup ----------
 
 function svgFace(card) {
   if (card.joker) return svgJoker(card.id);
@@ -257,12 +248,12 @@ function setCardPosInstant(el, col, row) {
 function paintFace(el, card) {
   el.classList.remove('facedown');
   el.classList.toggle('joker-card', !!card.joker);
-  el.querySelector('.card-face').innerHTML = cardFaceMarkup(card);
+  el.querySelector('.card-face').innerHTML = svgFace(card);
 }
 
 function paintBack(el) {
   el.classList.add('facedown');
-  el.querySelector('.card-face').innerHTML = cardBackMarkup();
+  el.querySelector('.card-face').innerHTML = svgBack();
 }
 
 // ---------- Rendering ----------
@@ -275,7 +266,7 @@ function renderBoard() {
     const el = makeCardEl();
     el.classList.add('checkpoint');
     el.dataset.checkpoint = String(p);
-    setCardPosInstant(el, CHECKPOINT_COL, 11 - p);
+    setCardPosInstant(el, CHECKPOINT_COL, NUM_ROWS - p);
     if (cp.revealed) paintFace(el, cp.card);
     else             paintBack(el);
     board.appendChild(el);
@@ -285,7 +276,7 @@ function renderBoard() {
     const el = makeCardEl();
     el.classList.add('ace');
     el.dataset.suit = suit;
-    setCardPosInstant(el, SUITS.indexOf(suit) + 1, 11 - state.aces[suit].progress);
+    setCardPosInstant(el, SUITS.indexOf(suit) + 1, NUM_ROWS - state.aces[suit].progress);
     paintFace(el, { suit, rank: 'A' });
     if (state.winner === suit) el.classList.add('winner');
     board.appendChild(el);
@@ -349,7 +340,7 @@ function updateDeckCount() { deckCountEl.textContent = `${state.deck.length} lef
 function setLastCard(card) {
   const v = lastCardEl.querySelector('.value');
   if (!card) { v.innerHTML = '—'; return; }
-  v.innerHTML = `<span class="mini" aria-label="${describeCard(card)}">${cardFaceMarkup(card)}</span>`;
+  v.innerHTML = `<span class="mini" aria-label="${describeCard(card)}">${svgFace(card)}</span>`;
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -370,7 +361,7 @@ async function moveAce(suit) {
   a.progress += 1;
   const aceEl = board.querySelector(`.card.ace[data-suit="${suit}"]`);
   if (aceEl) {
-    setCardPos(aceEl, SUITS.indexOf(suit) + 1, 11 - a.progress);
+    setCardPos(aceEl, SUITS.indexOf(suit) + 1, NUM_ROWS - a.progress);
     const glow = isRedSuit(suit) ? 'glow-red' : 'glow-black';
     aceEl.classList.add('bump', glow);
     setTimeout(() => aceEl.classList.remove('bump'), 360);
@@ -492,17 +483,6 @@ function onKey(e) {
   }
 }
 
-function preloadImages() {
-  if (CARD_STYLE !== 'pixel') return;
-  const urls = ['cards/back.png'];
-  for (const suit of SUITS) {
-    urls.push(`cards/${suit}_1.png`);
-    for (const rank of RANKS) urls.push(`cards/${suit}_${RANK_FILES[rank]}.png`);
-  }
-  for (let i = 1; i <= 4; i++) urls.push(`cards/joker_${i}.png`);
-  urls.forEach(src => { const img = new Image(); img.src = src; });
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   board       = document.getElementById('board');
   statusEl    = document.getElementById('status');
@@ -523,6 +503,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   window.addEventListener('orientationchange', () => setTimeout(reflowAll, 120));
 
-  preloadImages();
   newGame();
 });
