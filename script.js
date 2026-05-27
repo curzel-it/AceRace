@@ -125,6 +125,7 @@ function newGame() {
   setLastCard(null);
   updateDeckCount();
   drawBtn.disabled = false;
+  newGameBtn.classList.remove('celebrate');
 }
 
 function lockSeedAndDeal() {
@@ -414,6 +415,7 @@ function declareWinner(suit) {
   if (el) el.classList.add('winner');
   setStatus(`\u{1F3C6} ${SUIT_NAMES[suit]} wins the race!`);
   triggerConfetti(suit);
+  newGameBtn.classList.add('celebrate');
 }
 
 /** Step one ace up one row. Returns { won, checkpoint }. */

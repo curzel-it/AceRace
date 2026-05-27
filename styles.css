@@ -309,6 +309,18 @@ button.ghost {
 }
 button.ghost:hover:not(:disabled) { background: rgba(217,180,101,0.12); }
 
+/* After a winner is declared the New Game button takes over the primary
+   role — same gold gradient + pulse the Draw button had during play. */
+button.ghost.celebrate {
+  background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 60%, var(--gold-dark) 100%);
+  color: var(--ink);
+  border-color: var(--gold-bright);
+  box-shadow: 0 3px 0 var(--gold-dark), 0 5px 12px rgba(0,0,0,0.4);
+  font-size: 0.95rem;
+  padding: 0.6rem 1.2rem;
+  animation: btn-pulse 1.6s ease-in-out infinite;
+}
+
 @media (max-height: 640px) and (orientation: portrait) {
   header { padding-top: 0.3rem; }
   .tagline { display: none; }
