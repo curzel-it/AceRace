@@ -45,7 +45,7 @@ const JOKER_HOLD_MS = 700;
 const SEED_WINDOW_MS = 10_000;
 
 let state = null;
-let board, statusEl, drawBtn, lastCardEl, deckCountEl, effectsEl;
+let board, statusEl, drawBtn, newGameBtn, lastCardEl, deckCountEl, effectsEl;
 let cardW = 0, cardH = 0, cardGap = 0;
 
 // ---------- Seeded RNG ----------
@@ -125,6 +125,8 @@ function newGame() {
   setLastCard(null);
   updateDeckCount();
   drawBtn.disabled = false;
+  drawBtn.hidden = false;
+  newGameBtn.hidden = true;
 }
 
 function lockSeedAndDeal() {
@@ -412,8 +414,10 @@ function declareWinner(suit) {
   state.winner = suit;
   const el = board.querySelector(`.card.ace[data-suit="${suit}"]`);
   if (el) el.classList.add('winner');
-  setStatus(`\u{1F3C6} ${SUIT_NAMES[suit]} wins the race! Refresh for another.`);
+  setStatus(`\u{1F3C6} ${SUIT_NAMES[suit]} wins the race!`);
   triggerConfetti(suit);
+  drawBtn.hidden = true;
+  newGameBtn.hidden = false;
 }
 
 /** Step one ace up one row. Returns { won, checkpoint }. */
@@ -541,7 +545,7 @@ function onKey(e) {
     e.preventDefault();
     if (!drawBtn.disabled) drawCard();
   } else if (e.key === 'r' || e.key === 'R') {
-    location.reload();
+    newGame();
   }
 }
 
@@ -549,11 +553,13 @@ document.addEventListener('DOMContentLoaded', () => {
   board       = document.getElementById('board');
   statusEl    = document.getElementById('status');
   drawBtn     = document.getElementById('draw-btn');
+  newGameBtn  = document.getElementById('new-game-btn');
   lastCardEl  = document.getElementById('last-card');
   deckCountEl = document.getElementById('deck-count');
   effectsEl   = document.getElementById('effects');
 
   drawBtn.addEventListener('click', drawCard);
+  newGameBtn.addEventListener('click', newGame);
   document.addEventListener('keydown', onKey);
 
   let resizeTimer = null;

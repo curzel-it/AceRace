@@ -297,7 +297,8 @@ button {
   line-height: 1.1;
   font-size: 0.95rem;
 }
-#draw-btn:not(:disabled):not(:active):not(:hover) {
+#draw-btn:not(:disabled):not(:active):not(:hover),
+#new-game-btn:not(:disabled):not(:active):not(:hover) {
   animation: btn-pulse 2.6s ease-in-out infinite;
 }
 @keyframes btn-pulse {
@@ -318,6 +319,7 @@ button:active:not(:disabled) {
   box-shadow: 0 1px 0 var(--gold-dark), 0 2px 6px rgba(0,0,0,0.35);
 }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
+button[hidden] { display: none; }
 
 @media (max-height: 640px) and (orientation: portrait) {
   header { padding-top: 0.3rem; }
