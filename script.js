@@ -35,8 +35,11 @@ const CHAIN_PAUSE_MS = 240;
 const JOKER_HOLD_MS = 700;
 
 let state = null;
-let board, statusEl, drawBtn, newGameBtn, lastCardEl, deckCountEl;
+let board, statusEl, drawBtn, newGameBtn, lastCardEl, deckCountEl, effectsEl;
 let cardW = 0, cardH = 0, cardGap = 0;
+
+const RED_SUITS = new Set(['hearts', 'diamonds']);
+function isRedSuit(suit) { return RED_SUITS.has(suit); }
 
 // ---------- Deck setup ----------
 
@@ -199,8 +202,8 @@ function svgFace(card) {
   const rankSize = card.rank === '10' ? 64 : 86;
   return `<svg viewBox="0 0 153 214" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
     <rect x="3" y="3" width="147" height="208" rx="12" fill="#fdfaf3" stroke="${color}" stroke-width="2.5"/>
-    <text x="76.5" y="100" font-size="${rankSize}" font-weight="900" fill="${color}" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">${card.rank}</text>
-    <text x="76.5" y="174" font-size="70" fill="${color}" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">${glyph}</text>
+    <text x="76.5" y="100" font-size="${rankSize}" font-weight="900" fill="${color}" text-anchor="middle" font-family="'Cinzel', Georgia, 'Times New Roman', serif">${card.rank}</text>
+    <text x="76.5" y="174" font-size="70" fill="${color}" text-anchor="middle" font-family="'Cinzel', Georgia, 'Times New Roman', serif">${glyph}</text>
   </svg>`;
 }
 
@@ -214,8 +217,8 @@ function svgJoker(id) {
   const [ring, accent] = palettes[(id - 1) % palettes.length];
   return `<svg viewBox="0 0 153 214" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
     <rect x="3" y="3" width="147" height="208" rx="12" fill="#fdfaf3" stroke="${ring}" stroke-width="2.5"/>
-    <text x="76.5" y="80" font-size="22" font-weight="800" fill="${ring}" text-anchor="middle" letter-spacing="3" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">JOKER</text>
-    <text x="76.5" y="178" font-size="108" font-weight="900" fill="${accent}" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">★</text>
+    <text x="76.5" y="80" font-size="22" font-weight="800" fill="${ring}" text-anchor="middle" letter-spacing="3" font-family="'Cinzel', Georgia, 'Times New Roman', serif">JOKER</text>
+    <text x="76.5" y="178" font-size="108" font-weight="900" fill="${accent}" text-anchor="middle" font-family="'Cinzel', Georgia, 'Times New Roman', serif">★</text>
   </svg>`;
 }
 
@@ -223,7 +226,7 @@ function svgBack() {
   return `<svg viewBox="0 0 153 214" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
     <rect x="3" y="3" width="147" height="208" rx="12" fill="#7a1d1d" stroke="#d4af37" stroke-width="2.5"/>
     <rect x="10" y="10" width="133" height="194" rx="8" fill="#5b1414" stroke="#d4af37" stroke-width="1" stroke-dasharray="6 4"/>
-    <text x="76.5" y="132" font-size="84" font-weight="900" fill="#d4af37" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">★</text>
+    <text x="76.5" y="132" font-size="84" font-weight="900" fill="#d4af37" text-anchor="middle" font-family="'Cinzel', Georgia, 'Times New Roman', serif">★</text>
   </svg>`;
 }
 
@@ -291,7 +294,55 @@ function renderBoard() {
 
 // ---------- UI ----------
 
-function setStatus(msg) { statusEl.textContent = msg; }
+function setStatus(msg) {
+  if (statusEl.textContent === msg) return;
+  statusEl.textContent = msg;
+  statusEl.classList.remove('changed');
+  void statusEl.offsetWidth;          // restart the animation if it was running
+  statusEl.classList.add('changed');
+}
+
+// ---------- Effects ----------
+
+function triggerConfetti(suit) {
+  if (!effectsEl) return;
+  const winColor = isRedSuit(suit) ? '#e85c61' : '#1a1a1a';
+  const palette = [winColor, '#d4af37', '#f4d98c', '#ffffff'];
+  for (let i = 0; i < 90; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti';
+    p.style.left = (Math.random() * 100) + '%';
+    p.style.background = palette[i % palette.length];
+    p.style.width  = (5 + Math.random() * 5) + 'px';
+    p.style.height = (9 + Math.random() * 10) + 'px';
+    p.style.animationDuration = (2.4 + Math.random() * 1.8) + 's';
+    p.style.animationDelay = (Math.random() * 0.4) + 's';
+    p.style.setProperty('--drift', (Math.random() * 240 - 120) + 'px');
+    p.style.setProperty('--spin', (360 + Math.random() * 720) + 'deg');
+    effectsEl.appendChild(p);
+    setTimeout(() => p.remove(), 5000);
+  }
+}
+
+function triggerJokerFlash() {
+  if (!effectsEl) return;
+  const f = document.createElement('div');
+  f.className = 'joker-flash';
+  effectsEl.appendChild(f);
+  setTimeout(() => f.remove(), 950);
+}
+
+function protestLeaders(leaders) {
+  for (const suit of leaders) {
+    const el = board.querySelector(`.card.ace[data-suit="${suit}"]`);
+    if (el) {
+      el.classList.remove('protest');
+      void el.offsetWidth;
+      el.classList.add('protest');
+      setTimeout(() => el.classList.remove('protest'), 600);
+    }
+  }
+}
 
 function updateDeckCount() { deckCountEl.textContent = `${state.deck.length} left`; }
 
@@ -310,6 +361,7 @@ function declareWinner(suit) {
   const el = board.querySelector(`.card.ace[data-suit="${suit}"]`);
   if (el) el.classList.add('winner');
   setStatus(`\u{1F3C6} ${SUIT_NAMES[suit]} wins the race!`);
+  triggerConfetti(suit);
 }
 
 /** Step one ace up one row. Returns { won, checkpoint }. */
@@ -319,8 +371,10 @@ async function moveAce(suit) {
   const aceEl = board.querySelector(`.card.ace[data-suit="${suit}"]`);
   if (aceEl) {
     setCardPos(aceEl, SUITS.indexOf(suit) + 1, 11 - a.progress);
-    aceEl.classList.add('bump');
+    const glow = isRedSuit(suit) ? 'glow-red' : 'glow-black';
+    aceEl.classList.add('bump', glow);
     setTimeout(() => aceEl.classList.remove('bump'), 360);
+    setTimeout(() => aceEl.classList.remove(glow),    560);
   }
   await delay(MOVE_MS);
   if (a.progress >= FINISH_PROGRESS) return { won: true, checkpoint: null };
@@ -367,14 +421,19 @@ async function advanceChain(suit) {
 async function handleJoker(prefix) {
   const max = Math.max(...SUITS.map(s => state.aces[s].progress));
   const advancing = SUITS.filter(s => state.aces[s].progress < max);
+  const leaders   = SUITS.filter(s => state.aces[s].progress === max);
+
+  triggerJokerFlash();
 
   if (advancing.length === 0) {
     setStatus(`${prefix}Joker! All aces tied — nobody moves.`);
+    protestLeaders(leaders);
     await delay(JOKER_HOLD_MS);
     return false;
   }
 
   setStatus(`${prefix}Joker! Trailing aces catch up.`);
+  protestLeaders(leaders);
   await delay(280);
 
   const results = await Promise.all(advancing.map(moveAce));
@@ -451,6 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
   newGameBtn  = document.getElementById('new-game-btn');
   lastCardEl  = document.getElementById('last-card');
   deckCountEl = document.getElementById('deck-count');
+  effectsEl   = document.getElementById('effects');
 
   drawBtn.addEventListener('click', drawCard);
   newGameBtn.addEventListener('click', newGame);
