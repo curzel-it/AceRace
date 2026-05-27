@@ -26,11 +26,13 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-top:    env(safe-area-inset-top);
 }
 
 header {
   text-align: center;
-  padding: 0.55rem 1rem 0.15rem;
+  padding: 0.35rem 1rem 0.1rem;
   flex: 0 0 auto;
 }
 
@@ -71,11 +73,16 @@ main {
   font-size: 0.95rem;
   font-weight: 500;
   letter-spacing: 0.04em;
-  min-height: 1.4em;
+  /* Reserve 2 lines so the board doesn't jump when a long message wraps. */
+  min-height: 2.8em;
+  line-height: 1.3;
   text-align: center;
   color: var(--gold-bright);
   max-width: 32rem;
   padding: 0 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 #status.changed {
   animation: status-in 0.32s ease-out;
@@ -274,7 +281,8 @@ button {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 0.6rem 1.2rem;
+  padding: 0.55rem 1.2rem;
+  min-height: 3.4rem;            /* equal height for primary and ghost */
   background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 60%, var(--gold-dark) 100%);
   color: var(--ink);
   border: 2px solid var(--gold-bright);
@@ -285,6 +293,7 @@ button {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   line-height: 1.1;
   font-size: 0.95rem;
 }
@@ -309,27 +318,6 @@ button:active:not(:disabled) {
   box-shadow: 0 1px 0 var(--gold-dark), 0 2px 6px rgba(0,0,0,0.35);
 }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
-button.ghost {
-  background: transparent;
-  color: var(--gold-bright);
-  border: 2px solid var(--gold);
-  box-shadow: none;
-  font-size: 0.85rem;
-  padding: 0.55rem 1rem;
-}
-button.ghost:hover:not(:disabled) { background: rgba(217,180,101,0.12); }
-
-/* After a winner is declared the New Game button takes over the primary
-   role — same gold gradient + pulse the Draw button had during play. */
-button.ghost.celebrate {
-  background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 60%, var(--gold-dark) 100%);
-  color: var(--ink);
-  border-color: var(--gold-bright);
-  box-shadow: 0 3px 0 var(--gold-dark), 0 5px 12px rgba(0,0,0,0.4);
-  font-size: 0.95rem;
-  padding: 0.6rem 1.2rem;
-  animation: btn-pulse 1.6s ease-in-out infinite;
-}
 
 @media (max-height: 640px) and (orientation: portrait) {
   header { padding-top: 0.3rem; }
