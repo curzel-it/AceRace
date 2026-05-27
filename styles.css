@@ -234,20 +234,30 @@ main {
 }
 #last-card .value .mini {
   display: inline-block;
-  height: 38px;
-  width: calc(38px * 153 / 214);  /* card aspect ratio */
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+  height: 44px;
+  width: calc(44px * 153 / 214);  /* card aspect ratio */
+  perspective: 400px;
+  animation: deal-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 #last-card .value .mini > img,
 #last-card .value .mini > svg {
   display: block;
   width: 100%;
   height: 100%;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.55));
 }
 #last-card .value .mini > img {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   border-radius: 2px;
+}
+
+/* Dealt-in: the card snaps onto the table from the deck — half-flipped,
+   slightly off to the side, lands with a tiny overshoot and a gold flash. */
+@keyframes deal-in {
+  0%   { opacity: 0; transform: translateX(-32px) rotateY(120deg) scale(0.45); filter: drop-shadow(0 0 0 rgba(244,217,140,0)); }
+  55%  { opacity: 1; transform: translateX(0)     rotateY(0)       scale(1.12); filter: drop-shadow(0 0 16px rgba(244,217,140,0.9)); }
+  100% { opacity: 1; transform: translateX(0)     rotateY(0)       scale(1);    filter: drop-shadow(0 0 0 rgba(244,217,140,0)); }
 }
 
 /* ====== Buttons ====== */
