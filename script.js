@@ -15,15 +15,16 @@ const RANK_NAMES = {
   'J': 'Jack', 'Q': 'Queen', 'K': 'King',
 };
 
-// Card rendering: 'pixel' uses the PNG deck in cards/; 'svg' renders
-// generated SVG faces — bigger rank/suit, far more legible at small sizes
-// (which is what mobile usually needs).
-const CARD_STYLE = 'pixel';  // 'pixel' | 'svg'
+// Card rendering: 'svg' renders clean stylized faces with a big rank and
+// suit — readable down to ~30px wide. 'pixel' uses the Retro Deck PNGs in
+// cards/ (better on large screens, less legible on tiny mobile cards).
+const CARD_STYLE = 'svg';  // 'svg' | 'pixel'
 
 const SUIT_GLYPHS = { hearts: '♥', spades: '♠', diamonds: '♦', clubs: '♣' };
 
 const SRC_W = 153, SRC_H = 214;      // pixel-art source dimensions (also the SVG viewBox)
-const BOARD_PAD = 6;
+const BOARD_PAD = 8;
+const CARD_GAP_FRACTION = 0.09;      // gap between cards, as a fraction of card width
 const FINISH_PROGRESS = 10;
 const CHECKPOINT_COUNT = 9;
 const CHECKPOINT_COL = 5;
@@ -35,7 +36,7 @@ const JOKER_HOLD_MS = 700;
 
 let state = null;
 let board, statusEl, drawBtn, newGameBtn, lastCardEl, deckCountEl;
-let cardW = 0, cardH = 0;
+let cardW = 0, cardH = 0, cardGap = 0;
 
 // ---------- Deck setup ----------
 
@@ -85,15 +86,17 @@ function isLandscape() {
 }
 
 /** Pick a card scale. Integer multiples (1x, 2x, 3x) when there's room to
- *  upscale; continuous downscale on tight screens, paired with
- *  `image-rendering: pixelated` so pixels stay crisp either way. */
+ *  upscale; continuous downscale on tight screens. */
 function chooseScale(availW, availH) {
   const cols = isLandscape() ? 11 : 5;
   const rows = isLandscape() ? 5 : 11;
-  const sW = (availW - 2 * BOARD_PAD) / (cols * SRC_W);
-  const sH = (availH - 2 * BOARD_PAD) / (rows * SRC_H);
+  // Each grid step is cardW + gap (or cardH + gap). gap = cardW * fraction.
+  const stepWFactor = SRC_W * (1 + CARD_GAP_FRACTION);
+  const stepHFactor = SRC_H + SRC_W * CARD_GAP_FRACTION;  // gap is measured in card-width units
+  const sW = (availW - 2 * BOARD_PAD + SRC_W * CARD_GAP_FRACTION) / (cols * stepWFactor);
+  const sH = (availH - 2 * BOARD_PAD + SRC_W * CARD_GAP_FRACTION) / (rows * stepHFactor);
   let s = Math.min(sW, sH);
-  if (s >= 1) s = Math.min(Math.floor(s), 4);  // integer upscale, capped at 4×
+  if (s >= 1) s = Math.min(Math.floor(s), 4);
   return Math.max(0.18, s);
 }
 
@@ -109,13 +112,16 @@ function layout() {
   const availH = window.innerHeight - header - footer - status_ - controls - lastCard - slack;
 
   const scale = chooseScale(availW, availH);
-  cardW = SRC_W * scale;
-  cardH = SRC_H * scale;
+  cardW   = SRC_W * scale;
+  cardH   = SRC_H * scale;
+  cardGap = Math.max(2, SRC_W * scale * CARD_GAP_FRACTION);
 
   const cols = isLandscape() ? 11 : 5;
   const rows = isLandscape() ? 5  : 11;
-  board.style.width  = (cols * cardW + 2 * BOARD_PAD) + 'px';
-  board.style.height = (rows * cardH + 2 * BOARD_PAD) + 'px';
+  const boardW = cols * cardW + (cols - 1) * cardGap + 2 * BOARD_PAD;
+  const boardH = rows * cardH + (rows - 1) * cardGap + 2 * BOARD_PAD;
+  board.style.width  = boardW + 'px';
+  board.style.height = boardH + 'px';
 
   const fl = board.querySelector('.finish-line');
   if (fl) {
@@ -128,15 +134,17 @@ function layout() {
 }
 
 function geomFor(col, row) {
+  const stepW = cardW + cardGap;
+  const stepH = cardH + cardGap;
   if (isLandscape()) {
     return {
-      left: BOARD_PAD + (11 - row) * cardW,
-      top:  BOARD_PAD + (col - 1)  * cardH,
+      left: BOARD_PAD + (11 - row) * stepW,
+      top:  BOARD_PAD + (col - 1)  * stepH,
     };
   }
   return {
-    left: BOARD_PAD + (col - 1) * cardW,
-    top:  BOARD_PAD + (row - 1) * cardH,
+    left: BOARD_PAD + (col - 1) * stepW,
+    top:  BOARD_PAD + (row - 1) * stepH,
   };
 }
 
