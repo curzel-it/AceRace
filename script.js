@@ -39,9 +39,41 @@ const FLIP_MS = 550;
 const CHAIN_PAUSE_MS = 240;
 const JOKER_HOLD_MS = 700;
 
+// 10-second windows: anyone whose first card draw lands in the same
+// window plays out the identical game. Locked at first draw, not at page
+// load, so the setup phase doesn't burn the seed.
+const SEED_WINDOW_MS = 10_000;
+
 let state = null;
 let board, statusEl, drawBtn, newGameBtn, lastCardEl, deckCountEl, effectsEl;
 let cardW = 0, cardH = 0, cardGap = 0;
+
+// ---------- Seeded RNG ----------
+
+/** Mulberry32 — small, fast, well-distributed, and pure 32-bit integer
+ *  math so it produces the same sequence in every JS engine. */
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seedFromQuery() {
+  try {
+    const v = parseInt(new URLSearchParams(window.location.search).get('seed'), 10);
+    if (Number.isFinite(v)) return v;
+  } catch (_) {}
+  return null;
+}
+
+function timeBucketSeed() {
+  return Math.floor(Date.now() / SEED_WINDOW_MS);
+}
 
 // ---------- Deck setup ----------
 
@@ -57,24 +89,35 @@ function buildDeck() {
   return deck;
 }
 
-function shuffle(arr) {
+function shuffle(arr, rng) {
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
 }
 
 function newGame() {
-  const deck = shuffle(buildDeck());
+  // Place face-down checkpoint placeholders without committing to which
+  // card sits behind each one yet — that's resolved at first-draw time
+  // when we lock the seed (see lockSeedAndDeal).
   const checkpoints = {};
   for (let p = 1; p <= CHECKPOINT_COUNT; p++) {
-    checkpoints[p] = { card: deck.pop(), revealed: false };
+    checkpoints[p] = { card: null, revealed: false };
   }
   const aces = {};
   for (const suit of SUITS) aces[suit] = { progress: 0 };
 
-  state = { deck, aces, checkpoints, winner: null, busy: false };
+  state = {
+    deck: null,
+    expectedDeckSize: 52 - CHECKPOINT_COUNT,
+    aces,
+    checkpoints,
+    winner: null,
+    busy: false,
+    seeded: false,
+    seed: null,
+  };
 
   layout();
   renderBoard();
@@ -82,6 +125,21 @@ function newGame() {
   setLastCard(null);
   updateDeckCount();
   drawBtn.disabled = false;
+}
+
+function lockSeedAndDeal() {
+  const override = seedFromQuery();
+  const seed = override !== null ? override : timeBucketSeed();
+  const rng  = mulberry32(seed);
+  const deck = buildDeck();
+  shuffle(deck, rng);
+  for (let p = 1; p <= CHECKPOINT_COUNT; p++) {
+    state.checkpoints[p].card = deck.pop();
+  }
+  state.deck   = deck;
+  state.seed   = seed;
+  state.seeded = true;
+  console.info(`[ace-race] game seed: ${seed}`);
 }
 
 // ---------- Layout & geometry ----------
@@ -335,7 +393,10 @@ function protestLeaders(leaders) {
   }
 }
 
-function updateDeckCount() { deckCountEl.textContent = `${state.deck.length} left`; }
+function updateDeckCount() {
+  const n = state.deck ? state.deck.length : state.expectedDeckSize;
+  deckCountEl.textContent = `${n} left`;
+}
 
 function setLastCard(card) {
   const v = lastCardEl.querySelector('.value');
@@ -444,6 +505,7 @@ async function handleJoker(prefix) {
 
 async function drawCard() {
   if (!state || state.busy || state.winner) return;
+  if (!state.seeded) lockSeedAndDeal();
   if (state.deck.length === 0) {
     setStatus('The deck is empty. Shuffle a new game!');
     drawBtn.disabled = true;

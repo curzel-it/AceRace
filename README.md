@@ -80,6 +80,22 @@ intermediate steps an ace has to take to win) is `N − 2`.
 
 Valid range: 4–14.
 
+### Seeded shuffle
+
+The shuffle is deterministic. The seed is the current time bucketed into
+**10-second windows**, locked when the first card is drawn (not at page
+load — so any setup time doesn't burn the seed). Anyone whose first
+draw lands in the same 10-second window plays out the identical game,
+across browsers and devices: same checkpoints behind each face-down
+card, same draw order, same chains, same winner.
+
+The PRNG is Mulberry32, which uses only 32-bit integer math — bit-for-
+bit deterministic across every browser engine.
+
+Pass `?seed=N` to lock a specific game (handy for sharing a hand with a
+friend or reproducing one for debugging). The current seed is logged to
+the console as `[ace-race] game seed: ...`.
+
 ### Files
 
 | File         | What it is                                          |
